@@ -1,34 +1,32 @@
 import pandas as pd
-from sklearn.linear_model import LogisticRegression,Lasso
+import numpy as np
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import LabelEncoder,StandardScaler
-import matplotlib.pyplot as plt
+from sklearn import metrics
+from pprint import pprint
+
 
 crops = pd.read_csv("soil_measures.csv")
 
-X = crops.drop("crop",axis=1).values
-y = crops["crop"].values
-le = LabelEncoder()
-y = le.fit_transform(y)
-names = crops.drop("crop",axis=1).columns
-lasso = Lasso(alpha=0.1)
-lasso_coef = lasso.fit(X,y).coef_
-plt.bar(names,lasso_coef)
-plt.xticks(rotation=45)
-plt.show()
-feature_index = crops.columns.get_loc("ph")
-feature_index2 = crops.columns.get_loc("P")
-feature_index3 = crops.columns.get_loc("N")
-X[:, feature_index] = X[:, feature_index] * 0.40
-X[:, feature_index2] = X[:, feature_index2] * 0.10
-X[:, feature_index3] = X[:, feature_index3] * 0.025
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
-model = LogisticRegression()
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
-print("Accuracy:", accuracy)
+
+print(crops.isna().sum().sort_values()) # there is no missing values
+print(crops["crop"].unique()) # types of crop
+X = crops.drop("crop",axis=1)
+y = crops["crop"]
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2,random_state=42)
+feature_score = {}
+
+for feature in X.columns:
+    log_reg = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=200)
+    log_reg.fit(X_train[[feature]], y_train)
+    y_pred = log_reg.predict(X_test[[feature]])
+    accuracy = accuracy_score(y_test, y_pred)
+    feature_score[feature] = accuracy
+pprint(feature_score)
+best_feature = max(feature_score, key=feature_score.get)
+best_predictive_feature = {best_feature: feature_score[best_feature]}
+print("Feature Scores:")
+print(feature_score)
+print("\nBest Predictive Feature:")
+print(best_predictive_feature)
